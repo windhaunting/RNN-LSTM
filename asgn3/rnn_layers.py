@@ -32,7 +32,10 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
   # hidden state and any values you need for the backward pass in the next_h   #
   # and cache variables respectively.                                          #
   ##############################################################################
-  pass
+  #pass
+
+  next_h = tanh(prev_h*Wh + x*Wx + b)          # update the next h_t using h_{t-1} and x_t
+  cache = (next_h, Wx, prev_h, Wh, b)                  # cache for backward propagatoin
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
