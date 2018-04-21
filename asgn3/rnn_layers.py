@@ -69,7 +69,7 @@ def rnn_step_backward(dnext_h, cache):
   dx = np.dot(dtanh, Wx.T) 
   dprev_h = np.dot(dtanh, Wh.T)
   dWx = np.dot(x.T, dtanh)
-  dwh = np.dot(prev_h.T, dtanh)
+  dWh = np.dot(prev_h.T, dtanh)
   db = dtanh.sum(axis = 0)
 
   ##############################################################################
@@ -102,7 +102,18 @@ def rnn_forward(x, h0, Wx, Wh, b):
   # input data. You should use the rnn_step_forward function that you defined  #
   # above.                                                                     #
   ##############################################################################
-  pass
+  #pass
+  prev_h = h0
+  T = x.shape[1]
+  h = []
+  cache = []
+  for t in xrange(T):
+    h_next_t, cache_t = rnn_step_forward(x[:, t, :], prev_h, Wx, Wh, b)
+    h.append(h_next_t)
+    cache.append(cache_t)
+    prev_h = h_next_t
+  h = np.array(h).transpose(1, 0, 2)
+
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
