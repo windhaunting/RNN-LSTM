@@ -104,16 +104,16 @@ def rnn_forward(x, h0, Wx, Wh, b):
   ##############################################################################
   #pass
   prev_h = h0
-  T = x.shape[1]
+  T = x.shape[1]         # how many hidden layers
   h = []
   cache = []
   for t in xrange(T):
-    h_next_t, cache_t = rnn_step_forward(x[:, t, :], prev_h, Wx, Wh, b)
+    h_next_t, cache_t = rnn_step_forward(x[:, t, :], prev_h, Wx, Wh, b)          # forward step
     h.append(h_next_t)
     cache.append(cache_t)
     prev_h = h_next_t
   h = np.array(h).transpose(1, 0, 2)
-
+  
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -140,7 +140,35 @@ def rnn_backward(dh, cache):
   # sequence of data. You should use the rnn_step_backward function that you   #
   # defined above.                                                             #
   ##############################################################################
-  pass
+  #pass
+  
+  N, T, H = dh.shape
+  D = cache[0][2].shape[0]  #Wx's D,H
+  print ("N, T, H, D: ", N, T, H, D)
+  inter_dprev_h = np.zeros((N, H))
+  dx, dWx, dWh, db = [], np.zeros((D, H)), np.zeros((H, H)), np.zeros(H)
+  for t in xrange(T-1, -1, -1):
+    inter_dx, inter_dprev_h, inter_dWx, inter_dWh, inter_db = rnn_step_backward(dh[:, t, :] + inter_dprev_h, cache[t])
+    #print ("inter_dx.... shape: ", inter_dx.shape, inter_dprev_h.shape, inter_dWx.shape, inter_dWh.shape, inter_db.shape)
+    dWx = dWx + inter_dWx
+    dWh = dWh + inter_dWh
+    db = db + inter_db
+    dx.append(inter_dx)
+  dh0 = inter_dprev_h
+  dx = np.array(dx[::-1]).transpose(1, 0, 2)        #invert dx
+
+  '''
+  N, T, H = dh.shape
+  D = cache[0][1].shape[0] # Wx is (D, H)
+  stepdprev_h = np.zeros((N, H))
+
+  for t in range(T-1, -1, -1):
+      stepdx, stepdprev_h, stepdWx, stepdWh, stepdb = rnn_step_backward(dh[:, t, :] + stepdprev_h, cache[t])
+      dx.append(stepdx)
+      dWx, dWh, db = dWx + stepdWx, dWh + stepdWh, db + stepdb
+  dh0 = stepdprev_h
+  dx = np.array(dx[::-1]).transpose(1, 0, 2)
+  '''
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -168,7 +196,9 @@ def word_embedding_forward(x, W):
   #                                                                            #
   # HINT: This should be very simple.                                          #
   ##############################################################################
-  pass
+  #pass
+  out = W[x, :]
+  cache = (W, x)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -196,7 +226,10 @@ def word_embedding_backward(dout, cache):
   #                                                                            #
   # HINT: Look up the function np.add.at                                       #
   ##############################################################################
-  pass
+  #pass
+  W, x = cache
+  dW = np.zeros_like(W)
+  np.add.at(dW, x, dout)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -242,7 +275,7 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
   # TODO: Implement the forward pass for a single timestep of an LSTM.        #
   # You may want to use the numerically stable sigmoid implementation above.  #
   #############################################################################
-  pass
+  #pass
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
