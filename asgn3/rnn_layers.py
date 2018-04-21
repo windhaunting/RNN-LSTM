@@ -144,7 +144,7 @@ def rnn_backward(dh, cache):
   
   N, T, H = dh.shape
   D = cache[0][2].shape[0]  #Wx's D,H
-  print ("N, T, H, D: ", N, T, H, D)
+  #print ("N, T, H, D: ", N, T, H, D)
   inter_dprev_h = np.zeros((N, H))
   dx, dWx, dWh, db = [], np.zeros((D, H)), np.zeros((H, H)), np.zeros(H)
   for t in xrange(T-1, -1, -1):
@@ -229,7 +229,7 @@ def word_embedding_backward(dout, cache):
   #pass
   W, x = cache
   dW = np.zeros_like(W)
-  np.add.at(dW, x, dout)
+  np.add.at(dW, x, dout)            # dW at x indices + dout 
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################

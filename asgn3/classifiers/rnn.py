@@ -135,7 +135,38 @@ class CaptioningRNN(object):
     # defined above to store loss and gradients; grads[k] should give the      #
     # gradients for self.params[k].                                            #
     ############################################################################
-    pass
+    #pass
+    # (1) use affine transformation
+    h0, features_cache = affine_forward(features, W_proj, b_proj)
+    
+    # (2) use word embedding layer to transform the words from indices to vectors
+    
+    captions_in_embed, embed_in_cache = word_embedding_forward(captions_in, W_embed)
+
+    # (3) use rnn or lstm
+    if self.cell_type == 'rnn':
+        h, rnn_cache = rnn_forward(captions_in_embed, h0, Wx, Wh, b)
+    elif self.cell_type == 'lstm':
+        h, lstm_cache = lstm_forward(captions_in_embed, h0, Wx, Wh, b)
+
+    # (4) temporal) affine transformation
+    temporal_out, temporal_cache = temporal_affine_forward(h, W_vocab, b_vocab)
+
+    # (5) Use (temporal) softmax  
+    loss, dout = temporal_softmax_loss(temporal_out, captions_out, mask)
+
+    # backward pass
+
+    dtemporal, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, temporal_cache)
+    
+    if self.cell_type == 'rnn':
+        drnn, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dtemporal, rnn_cache)
+    elif self.cell_type == 'lstm':
+        drnn, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dtemporal, lstm_cache)
+
+    grads['W_embed'] = word_embedding_backward(drnn, embed_in_cache)
+    dfeatures, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, features_cache)
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -197,7 +228,35 @@ class CaptioningRNN(object):
     # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
     # a loop.                                                                 #
     ###########################################################################
-    pass
+    #pass
+
+    prev_h, _ = affine_forward(features, W_proj, b_proj)
+   
+    if self.cell_type == 'lstm':
+        prev_cell = np.zeros_like(prev_h)
+
+    x = np.array([self._start for i in range(N)])
+
+    captions[:, 0] = self._start
+
+    for t in range(1, max_length):
+        # (1) Embed the previous word 
+        x_embed, _ = word_embedding_forward(x, W_embed)
+
+        # (2) RNN or lsm step
+        if self.cell_type == 'rnn':
+            next_h, cache = rnn_step_forward(x_embed, prev_h, Wx, Wh, b)
+            prev_h = next_h
+        elif self.cell_type == 'lstm':
+            next_h, next_cell, cache = lstm_step_forward(x_embed, prev_h, prev_cell, Wx, Wh, b)
+            prev_h, prev_cell = next_h, next_cell
+        # (3) use imbed
+        vocab_out, vocab_cache = affine_forward(next_h, W_vocab, b_vocab)
+        
+        # (4) select the word with the hightest score
+        x = vocab_out.argmax(1)
+        captions[:, t] = x
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
