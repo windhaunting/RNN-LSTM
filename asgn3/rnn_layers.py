@@ -276,6 +276,20 @@ def lstm_step_forward(x, prev_h, prev_c, Wx, Wh, b):
   # You may want to use the numerically stable sigmoid implementation above.  #
   #############################################################################
   #pass
+  
+  N, H = prev_h.shape  #minibatch size N and Hidden dimension H
+  a = np.dot(x, Wx) + np.dot(prev_h, Wh) + b
+
+  i = sigmoid(a[:, 0:H])               
+  f = sigmoid(a[:, H:2*H])
+  o = sigmoid(a[:, 2*H:3*H])
+  g = np.tanh(a[:, 3*H:4*H])
+  #print ("i, f, o, g: ", i.shape, f.shape, o.shape, g.shape)
+  next_c = f * prev_c + i * g  
+  next_h = o * np.tanh(next_c) 
+   
+  cache = (i, f, o, g, x, Wx, Wh, prev_c, prev_h, next_c)
+
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -307,7 +321,20 @@ def lstm_step_backward(dnext_h, dnext_c, cache):
   # HINT: For sigmoid and tanh you can compute local derivatives in terms of  #
   # the output value from the nonlinearity.                                   #
   #############################################################################
-  pass
+  #pass
+  i, f, o, g, x, Wx, Wh, prev_c, prev_h, next_c = cache
+
+  do = np.tanh(next_c) * dnext_h                        
+  dnext_c += o * (1 - np.tanh(next_c) ** 2) * dnext_h          #  next_c = f * prev_c + i * g  
+  di, df, dg, dprev_c = g * dnext_c , prev_c * dnext_c , i * dnext_c , f * dnext_c      #
+  da = np.hstack([i*(1-i)*di, f*(1-f)*df, o*(1-o)*do, (1-g*g)*dg])      #   i = sigmoid(a[:, 0:H])       
+
+  # from (1)
+  dx = np.dot(da, Wx.T)
+  dWx = np.dot(x.T, da)
+  dprev_h = np.dot(da, Wh.T)
+  dWh = np.dot(prev_h.T, da)
+  db = np.sum(da, axis=0)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -342,7 +369,19 @@ def lstm_forward(x, h0, Wx, Wh, b):
   # TODO: Implement the forward pass for an LSTM over an entire timeseries.   #
   # You should use the lstm_step_forward function that you just defined.      #
   #############################################################################
-  pass
+  #pass
+  T = x.shape[1]           # input T vectors
+  prev_h = h0
+  prev_c = np.zeros_like(h0)   
+  h, cache = [], []
+  
+  for t in range(T):
+      next_h, next_c, step_cache = lstm_step_forward(x[:, t, :], prev_h, prev_c, Wx, Wh, b)
+      cache.append(step_cache)
+      h.append(next_h)
+      prev_h, prev_c = next_h, next_c
+
+  h = np.array(h).transpose(1, 0, 2)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -370,7 +409,22 @@ def lstm_backward(dh, cache):
   # TODO: Implement the backward pass for an LSTM over an entire timeseries.  #
   # You should use the lstm_step_backward function that you just defined.     #
   #############################################################################
-  pass
+  #pass
+  N, T, H = dh.shape
+  D = cache[0][4].shape[1]  # x is (N, D)
+
+  inter_dprev_h, inter_dprev_c = np.zeros((N, H)), np.zeros((N, H))
+  dx, dWx, dWh, db = [], np.zeros((D, 4*H)), np.zeros((H, 4*H)), np.zeros(4*H)
+
+  for t in range(T-1, -1, -1):
+
+      inter_dx, inter_dprev_h, inter_dprev_c, inter_dWx, inter_dWh, inter_db = lstm_step_backward(
+              dh[:, t, :] + inter_dprev_h, inter_dprev_c, cache[t])
+      dWx, dWh, db = dWx + inter_dWx, dWh + inter_dWh, db + inter_db
+      dx.append(inter_dx)
+
+  dh0 = inter_dprev_h
+  dx = np.array(dx[::-1]).transpose(1, 0, 2)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
